@@ -1,6 +1,6 @@
 #include "player.hpp"
 // Player definitions
-Player(){
+Player::Player(){
     _piece = 'X';
     _placing = true;
     _canFly = false;

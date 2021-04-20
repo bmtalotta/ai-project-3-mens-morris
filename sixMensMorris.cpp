@@ -63,13 +63,26 @@ bool validAdjacent(int startX, int startY, int endX, int endY, vector<vector<cha
         direction = -1;
     }
     if(distancey != 0 && distancey != 0){
+        return false;
+    }
+    if(distancex + distancey > 2 || distancex + distancey < -2){
+        return false;
+    }
+    for(int i = 0; i < abs(distancex); ++i){
+        if(board[(startX + i * direction)][startY] == ' '){
+            return true;
+        }
+        if(board[(startX + i * direction)][startY] == 'N'){
             return false;
         }
-    for(int i = 0; i < abs(distancex); ++i){
-        // check spot with a[startX + (i*direction)]
     }
     for(int i = 0; i < abs(distancey); ++i){
-        // check spot with a[startY + (*i*direction)]
+        if(board[startX][(startY + i * direction)] == ' '){
+            return true;
+        }
+        if(board[startX][(startY + i * direction)] == 'N'){
+            return false;
+        }
     }
     return false;
 }
@@ -86,9 +99,9 @@ void movePiece(int startX, int startY, int endX, int endY, vector<vector<char>> 
     }
     return;
 }
-void swapPlayer(bool &player, Player &curPlayer, Player &playerOne, Player &playerTwo){
-    player = !player;
-    if(player){
+void swapPlayer(bool &playerPiece, Player &curPlayer, Player &playerOne, Player &playerTwo){
+    playerPiece = !playerPiece;
+    if(playerPiece){
         playerTwo = curPlayer;
         curPlayer = playerOne;
     }else{
@@ -121,7 +134,7 @@ bool checkForThree(Player &curPlayer, vector<vector<char>> &board){
             horInRow = 0;
         }
     }
-    if(horInRow == 3 || vertInRow == 3;){
+    if(horInRow == 3 || vertInRow == 3){
         return true;
     }
     return false;
@@ -148,7 +161,7 @@ void botTurn(Player &curPlayer, vector<vector<char>> &board){
 
 }
 void sixMensMorris(int numberOfRealPlayers){
-    vector<vector<char>> board = {{' ', 'B', ' ', 'B', ' '},    //B is bad spots, not placeable. N is not placeable or crossable blanks are valid spots.
+    vector<vector<char>> board = {{' ', 'B', ' ', 'B', ' '},    //B is bad spots, not placeable. N is not placeable or crossable. Blanks are valid spots.
                                   {'B', ' ', ' ', ' ', 'B'},
                                   {' ', ' ', 'N', ' ', ' '},
                                   {'B', ' ', ' ', ' ', 'B'},
@@ -157,7 +170,7 @@ void sixMensMorris(int numberOfRealPlayers){
     Player playerOne;
     Player playerTwo;
     Player curPlayer = playerTwo;
-    playerTwo._piece = 'O'
+    playerTwo._piece = 'O';
     int userChoice = menu();
     int goingFirst = rand() % 2 + 1;
     bool playerOnesTurn = true;
@@ -199,11 +212,11 @@ void sixMensMorris(int numberOfRealPlayers){
                 }
             }
         }else{
-            botTurn(letter, number, board, curPlayer._piece);
+            botTurn(curPlayer, board);
         }
         
         if(checkForThree(curPlayer, board)){
-            takePiece(curPlayer, &board);
+            takePiece(curPlayer, board);
         }
         swapPlayer(playerOnesTurn, curPlayer, playerOne, playerTwo);
         printBoard(board);
@@ -234,7 +247,7 @@ void sixMensMorris(int numberOfRealPlayers){
                 cout <<"enter the number" << endl;
                 cin >> number;
                 --number;
-                if(validAdjacent(letterPos, number, board, curPlayer) || (curPlayer._canFly && validPlacement(letterPos, number, board)){
+                if(validAdjacent(pieceX, pieceY, letterPos, number, board, curPlayer) || (curPlayer._canFly && validPlacement(letterPos, number, board))){
                     successfulMove = true;
                     movePiece(pieceX, pieceY, letterPos, number, board, curPlayer);
                 }else{
@@ -244,7 +257,7 @@ void sixMensMorris(int numberOfRealPlayers){
             successfulMove = false;
         }
         if(checkForThree(curPlayer, board)){
-            takePiece(curPlayer, &board);
+            takePiece(curPlayer, board);
             swapPlayer(playerOnesTurn,curPlayer,playerOne, playerTwo);
             --curPlayer._remaining;
         }else{
