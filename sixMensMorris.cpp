@@ -55,7 +55,7 @@ bool validPlacement(int x, int y, vector<vector<char>> &board){
     }
     return false;
 }
-bool validAdjacent(int startX, int startY, int endX, int endY, vector<vector<char>> &board, Player &curPlayer){
+bool validAdjacent(int startX, int startY, int endX, int endY, vector<vector<char>> &board,  std::shared_ptr<Player> &curPlayer){
     int distancex = endX-startX;
     int distancey = endY-startY;
     int direction = 1;
@@ -86,20 +86,21 @@ bool validAdjacent(int startX, int startY, int endX, int endY, vector<vector<cha
     }
     return false;
 }
-void placePiece(int x, int y, vector<vector<char>> &board,Player &curPlayer){
+void placePiece(int x, int y, vector<vector<char>> &board, std::shared_ptr<Player> &curPlayer){
     if(validPlacement(x, y, board)){
-        board[x][y] = curPlayer._piece;
+        board[x][y] = curPlayer->_piece;
     }
     return;
 }
-void movePiece(int startX, int startY, int endX, int endY, vector<vector<char>> &board,Player &curPlayer){
+void movePiece(int startX, int startY, int endX, int endY, vector<vector<char>> &board, std::shared_ptr<Player> &curPlayer){
     if(validPlacement(endX, endY, board)){
         board[startX][startY] = ' ';
-        board[endX][endY] = curPlayer._piece;
+        board[endX][endY] = curPlayer->_piece;
     }
     return;
 }
-void swapPlayer(bool &playerPiece, Player &curPlayer, Player &playerOne, Player &playerTwo){
+void swapPlayer(bool &playerPiece,  std::shared_ptr<Player> &curPlayer,  std::shared_ptr<Player> &playerOne,  std::shared_ptr<Player> &playerTwo){
+    cout << "here" <<endl;
     playerPiece = !playerPiece;
     if(playerPiece){
         playerTwo = curPlayer;
@@ -109,28 +110,23 @@ void swapPlayer(bool &playerPiece, Player &curPlayer, Player &playerOne, Player 
         curPlayer = playerTwo;
     }
 }
-int menu(){
-    cout << "1. player vs AI\n2. AI vs AI" << endl;
-    int userChoice;
-    cin >> userChoice;
-    return userChoice;
-}
+
 void botPlacement(char &letter, int &number, vector<vector<char>> &board, char team){
     
 
 }
-bool checkForThree(Player &curPlayer, vector<vector<char>> &board){
+bool checkForThree( std::shared_ptr<Player> &curPlayer, vector<vector<char>> &board){
     int horInRow = 0;
     int vertInRow = 0;
     for(int i = 0; i < board.size(); ++i){
-        if(board[curPlayer._lastMoveX][i] == curPlayer._piece){
+        if(board[curPlayer->_lastMoveX][i] == curPlayer->_piece){
             vertInRow++;
-        }else if(board[curPlayer._lastMoveX][i] == ' ' || board[curPlayer._lastMoveX][i] == 'N'){
+        }else if(board[curPlayer->_lastMoveX][i] == ' ' || board[curPlayer->_lastMoveX][i] == 'N'){
             vertInRow = 0;
         }
-        if(board[i][curPlayer._lastMoveY] == curPlayer._piece){
+        if(board[i][curPlayer->_lastMoveY] == curPlayer->_piece){
             horInRow++;
-        }else if(board[i][curPlayer._lastMoveY] == ' ' || board[i][curPlayer._lastMoveY] == 'N'){
+        }else if(board[i][curPlayer->_lastMoveY] == ' ' || board[i][curPlayer->_lastMoveY] == 'N'){
             horInRow = 0;
         }
     }
@@ -154,28 +150,53 @@ int playerChoice(char &letter){
     }
     return letterPos;
 }
-void takePiece(Player &curPlayer, vector<vector<char>> &board){
+void takePiece( std::shared_ptr<Player> &curPlayer, vector<vector<char>> &board){
+    char takeable = 'X';
+    char letter;
+    int y;
+    int x;
+    if(curPlayer->_piece == takeable){
+        takeable = 'O';
+    }
+    cout << "enter position of oponents piece you want to take" << endl;
+    cin >> letter;
+    cin >> y;
+    --y;
+    x = playerChoice(letter);
+    board[x][y] = ' ';
+}
+void botTurn( std::shared_ptr<Player> &curPlayer, vector<vector<char>> &board){
 
 }
-void botTurn(Player &curPlayer, vector<vector<char>> &board){
 
+int menu(){
+    cout << "1. player vs player\n 2. player vs AI\n3. AI vs AI" << endl;
+    int userChoice;
+    cin >> userChoice;
+    return (userChoice);
 }
-void sixMensMorris(int numberOfRealPlayers){
+void sixMensMorris(){
     vector<vector<char>> board = {{' ', 'B', ' ', 'B', ' '},    //B is bad spots, not placeable. N is not placeable or crossable. Blanks are valid spots.
                                   {'B', ' ', ' ', ' ', 'B'},
                                   {' ', ' ', 'N', ' ', ' '},
                                   {'B', ' ', ' ', ' ', 'B'},
                                   {' ', 'B', ' ', 'B', ' '}};
     printBoard(board);
-    Player playerOne;
-    Player playerTwo;
-    Player curPlayer = playerTwo;
-    playerTwo._piece = 'O';
+    std::shared_ptr<Player> playerOne = makePlayer();
+    std::shared_ptr<Player> playerTwo = makePlayer();
+    playerTwo->_piece = 'O';
+    std::shared_ptr<Player> curPlayer = playerTwo;
+    
     int userChoice = menu();
     int goingFirst = rand() % 2 + 1;
     bool playerOnesTurn = true;
     if(userChoice == 1){
-        playerOne._AIplayer = false;
+        playerOne->_AIplayer = false;
+        playerTwo->_AIplayer = false;
+        curPlayer = playerOne;
+    }
+    if(userChoice == 2){
+        playerOne->_AIplayer = false;
         curPlayer = playerOne;
         if(goingFirst == 1){
             cout << "You are going first!" << endl;
@@ -189,11 +210,14 @@ void sixMensMorris(int numberOfRealPlayers){
     char letter;
     int number;
     int letterPos = 0;
+    int removed;
     bool successfullyPlaced;
     while(turnCount < 12){
+        removed = 0;
+        cout << curPlayer->_piece << "'s turn" << endl;
         turnCount += 1;
         successfullyPlaced = false;
-        if(userChoice == 1 && playerOnesTurn){
+        if(curPlayer->_AIplayer == false){
             while(!successfullyPlaced){
                 cout << "choose an available position to place your piece" << endl;
                 cout << "Enter the letter" << endl;
@@ -202,8 +226,8 @@ void sixMensMorris(int numberOfRealPlayers){
                 cout << "Enter the number" << endl;
                 cin >> number;
                 --number;
-                curPlayer._lastMoveX = letterPos;
-                curPlayer._lastMoveY = number;
+                curPlayer->_lastMoveX = letterPos;
+                curPlayer->_lastMoveY = number;
                 if(validPlacement(letterPos, number, board)){
                     successfullyPlaced = true;
                     placePiece(letterPos, number, board, curPlayer);
@@ -217,19 +241,21 @@ void sixMensMorris(int numberOfRealPlayers){
         
         if(checkForThree(curPlayer, board)){
             takePiece(curPlayer, board);
+            removed = -1;
         }
         swapPlayer(playerOnesTurn, curPlayer, playerOne, playerTwo);
+        curPlayer->_remaining += removed;
         printBoard(board);
     }
-    curPlayer._placing = false;
-    playerOne._placing = false;
-    playerTwo._placing = false;
+    curPlayer->_placing = false;
+    playerOne->_placing = false;
+    playerTwo->_placing = false;
     bool gameOver = false;
     bool successfulMove = false;
     int pieceX;
     int pieceY;
     while(!gameOver){
-        if(curPlayer._AIplayer){
+        if(curPlayer->_AIplayer){
             botTurn(curPlayer, board);
         }else{
             while(!successfulMove){
@@ -247,7 +273,7 @@ void sixMensMorris(int numberOfRealPlayers){
                 cout <<"enter the number" << endl;
                 cin >> number;
                 --number;
-                if(validAdjacent(pieceX, pieceY, letterPos, number, board, curPlayer) || (curPlayer._canFly && validPlacement(letterPos, number, board))){
+                if(validAdjacent(pieceX, pieceY, letterPos, number, board, curPlayer) || (curPlayer->_canFly && validPlacement(letterPos, number, board))){
                     successfulMove = true;
                     movePiece(pieceX, pieceY, letterPos, number, board, curPlayer);
                 }else{
@@ -259,14 +285,14 @@ void sixMensMorris(int numberOfRealPlayers){
         if(checkForThree(curPlayer, board)){
             takePiece(curPlayer, board);
             swapPlayer(playerOnesTurn,curPlayer,playerOne, playerTwo);
-            --curPlayer._remaining;
+            --curPlayer->_remaining;
         }else{
             swapPlayer(playerOnesTurn,curPlayer,playerOne, playerTwo);
         }
-        if(playerOne._remaining == 2 || playerTwo._remaining == 2){
+        if(playerOne->_remaining == 2 || playerTwo->_remaining == 2){
             gameOver = true;
             swapPlayer(playerOnesTurn,curPlayer,playerOne, playerTwo);
-            cout << curPlayer._piece << "'s have won" << endl;
+            cout << curPlayer->_piece << "'s have won" << endl;
         }
 
     }

@@ -20,4 +20,6 @@ public:
     Player();
 };
 
+std::shared_ptr<Player> makePlayer();
+
 #endif

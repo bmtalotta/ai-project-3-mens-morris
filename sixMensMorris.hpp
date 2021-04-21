@@ -5,7 +5,7 @@
 
 
 void printBoard (std::vector<std::vector<std::string>> board);
-void sixMensMorris(int numberOfRealPlayers);
+void sixMensMorris();
 class sixMensMorrisTeam{
     int placed, remaining, taken;
     bool jump;

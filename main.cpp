@@ -2,6 +2,6 @@
 #include "sixMensMorris.hpp"
 
 int main(){
-    sixMensMorris(2);
+    sixMensMorris();
     return 0;
 }
