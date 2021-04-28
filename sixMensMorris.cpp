@@ -7,6 +7,9 @@ using std::endl;
 using std::string;
 #include <vector>
 using std::vector;
+#include<math.h>
+#include<chrono>
+using std::shared_ptr;
 
 void printBoard( vector<vector<char>> board){
     int positionTrackerX = -1;
@@ -31,7 +34,7 @@ void printBoard( vector<vector<char>> board){
                     ++positionTrackerX;
                 }
                 if(board[positionTrackerY][positionTrackerX] != ' '){
-                    cout << board[positionTrackerY][positionTrackerX] << ' ';
+                    cout << board[positionTrackerY][positionTrackerX] << ' ' << ' ';
                 }
                 else{
                     cout << blankDisplayBoard[i][j] << ' ';
@@ -55,7 +58,7 @@ bool validPlacement(int x, int y, vector<vector<char>> &board){
     }
     return false;
 }
-bool validAdjacent(int startX, int startY, int endX, int endY, vector<vector<char>> &board,  std::shared_ptr<Player> &curPlayer){
+bool validAdjacent(int startX, int startY, int endX, int endY, vector<vector<char>> &board,  std::shared_ptr<Player> curPlayer){
     int distancex = endX-startX;
     int distancey = endY-startY;
     int direction = 1;
@@ -86,36 +89,20 @@ bool validAdjacent(int startX, int startY, int endX, int endY, vector<vector<cha
     }
     return false;
 }
-void placePiece(int x, int y, vector<vector<char>> &board, std::shared_ptr<Player> &curPlayer){
+void placePiece(int x, int y, vector<vector<char>> &board, std::shared_ptr<Player> curPlayer){
     if(validPlacement(x, y, board)){
         board[x][y] = curPlayer->_piece;
     }
     return;
 }
-void movePiece(int startX, int startY, int endX, int endY, vector<vector<char>> &board, std::shared_ptr<Player> &curPlayer){
+void movePiece(int startX, int startY, int endX, int endY, vector<vector<char>> &board, std::shared_ptr<Player> curPlayer){
     if(validPlacement(endX, endY, board)){
         board[startX][startY] = ' ';
         board[endX][endY] = curPlayer->_piece;
     }
     return;
 }
-void swapPlayer(bool &playerPiece,  std::shared_ptr<Player> &curPlayer,  std::shared_ptr<Player> &playerOne,  std::shared_ptr<Player> &playerTwo){
-    cout << "here" <<endl;
-    playerPiece = !playerPiece;
-    if(playerPiece){
-        playerTwo = curPlayer;
-        curPlayer = playerOne;
-    }else{
-        playerOne = curPlayer;
-        curPlayer = playerTwo;
-    }
-}
-
-void botPlacement(char &letter, int &number, vector<vector<char>> &board, char team){
-    
-
-}
-bool checkForThree( std::shared_ptr<Player> &curPlayer, vector<vector<char>> &board){
+bool checkForThree( std::shared_ptr<Player> curPlayer, vector<vector<char>> &board){
     int horInRow = 0;
     int vertInRow = 0;
     for(int i = 0; i < board.size(); ++i){
@@ -127,6 +114,26 @@ bool checkForThree( std::shared_ptr<Player> &curPlayer, vector<vector<char>> &bo
         if(board[i][curPlayer->_lastMoveY] == curPlayer->_piece){
             horInRow++;
         }else if(board[i][curPlayer->_lastMoveY] == ' ' || board[i][curPlayer->_lastMoveY] == 'N'){
+            horInRow = 0;
+        }
+    }
+    if(horInRow == 3 || vertInRow == 3){
+        return true;
+    }
+    return false;
+}
+bool checkForThreeBot( int lastMoveX, int lastMoveY, char piece, vector<vector<char>> &board){
+    int horInRow = 0;
+    int vertInRow = 0;
+    for(int i = 0; i < board.size(); ++i){
+        if(board[lastMoveX][i] == piece){
+            vertInRow++;
+        }else if(board[lastMoveX][i] == ' ' || board[lastMoveX][i] == 'N'){
+            vertInRow = 0;
+        }
+        if(board[i][lastMoveY] == piece){
+            horInRow++;
+        }else if(board[i][lastMoveY] == ' ' || board[i][lastMoveY] == 'N'){
             horInRow = 0;
         }
     }
@@ -150,7 +157,7 @@ int playerChoice(char &letter){
     }
     return letterPos;
 }
-void takePiece( std::shared_ptr<Player> &curPlayer, vector<vector<char>> &board){
+void takePiece( std::shared_ptr<Player> curPlayer, vector<vector<char>> &board){
     char takeable = 'X';
     char letter;
     int y;
@@ -165,15 +172,549 @@ void takePiece( std::shared_ptr<Player> &curPlayer, vector<vector<char>> &board)
     x = playerChoice(letter);
     board[x][y] = ' ';
 }
-void botTurn( std::shared_ptr<Player> &curPlayer, vector<vector<char>> &board){
+struct nodeData{
+	vector<vector<char>> curBoard;
+	int numberOfVisits=0;
+	int lastMoveX=0;
+	int lastMoveY=0;
+	int winScore=0;
+	char team;
+	int gameState=3;
+    bool placing;
+    bool canFly = false;
+    int remaining;
+    int numPlaced;
+	nodeData(){
+		
+	}
+	nodeData(int x, int y, char piece, int placed, int rem, vector<vector<char>> board){
+		lastMoveY = y;
+		lastMoveX = x;
+		team=piece;
+		curBoard = board;
+        remaining = rem;
+        numPlaced = placed;
+	}
+};
+struct boardNode{
+	nodeData data;
+	std::shared_ptr<boardNode> parent;
+	vector<std::shared_ptr<boardNode>>children;
+	boardNode()
+	{
+	}
+	boardNode(std::shared_ptr<boardNode> base, nodeData ndata){
+		parent=base;
+		data = ndata;
+	}
+	
+};
+
+bool checkForWinner(vector<vector<char>> board, char teamChecking){
+    char opponentTeam = 'X';
+    int count = 0;
+    if(opponentTeam == teamChecking){
+        opponentTeam = 'O';
+    }
+    for(int i = 0; i < 5; i++){
+        for(int j = 0; j < 5; j++){
+            if(board[i][j] == opponentTeam){
+                count++;
+                
+            }
+        }
+    }
+    if(count == 2){
+       return true;
+    }
+    return false;
+}
+std::shared_ptr<boardNode> make_child(std::shared_ptr<boardNode> parent, nodeData data){
+		return std::make_unique<boardNode>(boardNode(parent, data));
+	}
+
+double ucbValue (int parentVisitCount, int winScore, int numberOfVisits){
+	if(numberOfVisits == 0){
+		return 9999;
+	}
+    
+	//cout << 100000*(winScore / numberOfVisits) + 1.41 * sqrt(log(parentVisitCount)/numberOfVisits) << endl;
+	return (winScore / numberOfVisits) + (1.41 * sqrt(log(parentVisitCount)/numberOfVisits));
+}
+
+shared_ptr<boardNode> findBestNodeWithUCB(shared_ptr<boardNode> node){
+	auto parentVisitCount = node->data.numberOfVisits;
+	vector<double> childUCB;
+	for (int i = 0; i < node->children.size(); ++i){
+		childUCB.push_back(ucbValue(parentVisitCount, node->children[i]->data.winScore, node->children[i]->data.numberOfVisits));
+	}
+	double curMax = childUCB[0];
+	int maxIndx = 0;
+	for (int i = 1; i < node->children.size(); ++i){
+		//cout << childUCB[i] << " halfway" << endl;
+		if(curMax < childUCB[i]){
+			curMax = childUCB[i];
+			maxIndx = i;
+		}
+	}
+	//cout << curMax << endl;
+	return node->children[maxIndx];
+}
+shared_ptr<boardNode> selectPromisingNode(shared_ptr<boardNode> rootNode){
+	return findBestNodeWithUCB(rootNode);
+}
+
+void playTurn(vector<vector<char>> &board, char teamPlaying,bool placing){
+    bool canFly =false;
+    int count = 0;
+    int randMove;
+    int moveX;
+    int moveY;
+    char opp = 'X';
+    if(opp == teamPlaying){
+        opp = 'O';
+    }
+    vector<std::pair<std::pair<int,int>,std::pair<int,int>>> posibleMoves;
+    vector<std::pair<int,int>> oppPieces;
+    vector<std::pair<int,int>> myPieces;
+    vector<std::pair<int,int>> openSpots;
+    std::pair<int,int> startPos;
+    std::pair<int, int> endPos;
+    for(int i = 0; i < 5; i++){
+        for(int j = 0; j < 5; j++){
+            if(board[i][j] == teamPlaying){
+                count++;
+                myPieces.push_back({i,j});
+            }
+            if(board[i][j] == opp){
+                oppPieces.push_back({i,j});
+            }
+            if(board[i][j] == ' '){
+                openSpots.push_back({i,j});
+            }
+        }
+    }
+    
+    printBoard(board);
+    if(count == 3 && !placing){
+        canFly = true;
+    }
+    int moveMyPiece;
+    int randomSpot;
+    if(myPieces.size() > 0){
+        moveMyPiece = rand() % myPieces.size();
+    }
+    if(openSpots.size() > 0){
+        randomSpot = rand() % openSpots.size();
+    }
+    if(canFly){//for when flying
+    cout << count << endl;
+    cout << "flying" << endl;
+        board[myPieces[moveMyPiece].first][myPieces[moveMyPiece].second] = ' ';
+        moveX = openSpots[randomSpot].first;
+        moveY = openSpots[randomSpot].second;
+    }else if(placing){//for when placing
+    //cout << "placing" <<endl;
+        moveX = openSpots[randomSpot].first;
+        moveY = openSpots[randomSpot].second;
+    }else{
+        cout << "adjacent" << endl;
+        for(int i = 0; i < 5; ++i){
+			for(int j = 0; j < 5; ++j){
+				if(board[i][j] == teamPlaying){
+                    if(i!=4){
+                        if(board[i+1][j] == ' '){
+                            startPos = {i,j};
+                            endPos = {i+1,j};
+                            posibleMoves.push_back({startPos,endPos});
+                        }
+                    }
+                    if(i!=0){
+                        if(board[i-1][j] == ' '){
+                            startPos = {i,j};
+                            endPos = {i-1,j};
+                            posibleMoves.push_back({startPos,endPos});
+                        }
+                    }
+                    if(j!=4){
+                        if(board[i][j+1] == ' '){
+                            startPos = {i,j};
+                            endPos = {i,j+1};
+                            posibleMoves.push_back({startPos,endPos});
+                        }
+                    }
+                    if(j!=0){
+                        if(board[i][j-1] == ' '){
+                            startPos = {i,j};
+                            endPos = {i,j-1};
+                            posibleMoves.push_back({startPos,endPos});
+                        }
+                    }
+			    }
+            }
+		}
+        randMove = rand() % posibleMoves.size();
+        board[posibleMoves[randMove].first.first][posibleMoves[randMove].first.second] = ' ';
+        moveX = posibleMoves[randMove].second.first;
+        moveY = posibleMoves[randMove].second.second;
+    }
+    int takeOpp;
+    board[moveX][moveY] = teamPlaying;
+    if(checkForThreeBot(moveX, moveY, teamPlaying, board)){
+        takeOpp = rand() % oppPieces.size();
+        board[oppPieces[takeOpp].first][oppPieces[takeOpp].second] = ' ';
+    }
+}
+
+void generateChildren(shared_ptr<boardNode> parent){
+	vector<vector<char>> parentBoard = parent->data.curBoard;
+    if(parent->data.numPlaced < 6){
+        parent->data.placing = true;
+    }else{
+        parent->data.placing = false;
+    }
+    if(parent->data.remaining == 3){
+        parent->data.canFly = true;
+    }else{
+        parent->data.canFly = false;
+    }
+	char piece = 'X';
+    char oppPiece = 'O';
+	if(parent->data.team=='X'){
+		piece='O';
+        oppPiece = 'X';
+	}
+    int numPlaced = parent->data.numPlaced;
+    if(parent->data.placing){
+        numPlaced++;
+    }
+    vector<std::pair<int,int>> oppPieces;
+    for (int i = 0; i < 5; i++){
+        for(int j = 0; j < 5; j++){
+            if(parentBoard[i][j] == oppPiece){
+                oppPieces.push_back({i,j});
+            }
+        }
+    }
+    int remove;
+    if(oppPieces.size() > 1){
+        remove = rand() % oppPieces.size();
+    }
+    if(parent->data.placing){
+        for (int i = 0; i < 5; i++){
+            for(int j = 0; j < 5; j++){
+                if(parentBoard[i][j] == ' '){
+                    parentBoard[i][j] = piece;
+                    if(checkForThreeBot(i,j,piece,parentBoard)){
+                        parentBoard[oppPieces[oppPiece].first][oppPieces[oppPiece].second] = ' ';
+                    }
+                    parent->children.push_back(make_child(parent, nodeData(i,j,piece, numPlaced, parent->data.remaining, parentBoard)));
+                    if(checkForThreeBot(i,j,piece,parentBoard)){
+                        parentBoard[oppPieces[oppPiece].first][oppPieces[oppPiece].second] = oppPiece;
+                    }
+                    parentBoard[i][j] = ' ';
+                }
+            }
+        }
+    }else if(parent->data.canFly){
+        for (int i = 0; i < 5; i++){
+            for(int j = 0; j < 5; j++){
+                if(parentBoard[i][j] == piece){
+                    for(int k = 0; k < 5; k++){
+                        for(int l = 0; l < 5; l++){
+                            if(parentBoard[k][l] == ' '){
+                                parentBoard[k][l] = piece;
+                                parentBoard[i][j] = ' ';
+                                if(checkForThreeBot(k,l,piece,parentBoard)){
+                                    parentBoard[oppPieces[oppPiece].first][oppPieces[oppPiece].second] = ' ';
+                                }
+                                parent->children.push_back(make_child(parent, nodeData(k,l,piece, numPlaced, parent->data.remaining, parentBoard)));
+                                if(checkForThreeBot(i,j,piece,parentBoard)){
+                                    parentBoard[oppPieces[oppPiece].first][oppPieces[oppPiece].second] = oppPiece;
+                                }
+                                parentBoard[i][j] = piece;
+                                parentBoard[k][l] = ' ';
+                            }
+                        }
+                    }
+                    
+                }
+            }
+        }
+    }else{
+        for (int i = 0; i < 5; i++){
+            for(int j = 0; j < 5; j++){
+                if(parentBoard[i][j] == piece){
+                    if(i!=4){
+                        if(parentBoard[i+1][j] == ' '){
+                            parentBoard[i+1][j] = piece;
+                            if(checkForThreeBot(i+1,j,piece,parentBoard)){
+                                parentBoard[oppPieces[oppPiece].first][oppPieces[oppPiece].second] = ' ';
+                            }
+                            parent->children.push_back(make_child(parent, nodeData(i+1,j,piece, numPlaced, parent->data.remaining, parentBoard)));
+                            if(checkForThreeBot(i+1,j,piece,parentBoard)){
+                                parentBoard[oppPieces[oppPiece].first][oppPieces[oppPiece].second] = oppPiece;
+                            }
+                            parentBoard[i+1][j] = ' ';
+                        }
+                    }
+                    if(i!=0){
+                        if(parentBoard[i-1][j] == ' '){
+                            parentBoard[i-1][j] = piece;
+                            if(checkForThreeBot(i-1,j,piece,parentBoard)){
+                                parentBoard[oppPieces[oppPiece].first][oppPieces[oppPiece].second] = ' ';
+                            }
+                            parent->children.push_back(make_child(parent, nodeData(i-1,j,piece, numPlaced, parent->data.remaining, parentBoard)));
+                            if(checkForThreeBot(i-1,j,piece,parentBoard)){
+                                parentBoard[oppPieces[oppPiece].first][oppPieces[oppPiece].second] = oppPiece;
+                            }
+                            parentBoard[i-1][j] = ' ';
+                        }
+                    }
+                     if(j!=4){
+                        if(parentBoard[i][j+1] == ' '){
+                            parentBoard[i][j+1] = piece;
+                            if(checkForThreeBot(i,j+1,piece,parentBoard)){
+                                parentBoard[oppPieces[oppPiece].first][oppPieces[oppPiece].second] = ' ';
+                            }
+                            parent->children.push_back(make_child(parent, nodeData(i,j+1,piece, numPlaced, parent->data.remaining, parentBoard)));
+                            if(checkForThreeBot(i,j+1,piece,parentBoard)){
+                                parentBoard[oppPieces[oppPiece].first][oppPieces[oppPiece].second] = oppPiece;
+                            }
+                            parentBoard[i][j+1] = ' ';
+                        }
+                    }
+                    if(j!=0){
+                        if(parentBoard[i][j-1] == ' '){
+                            parentBoard[i][j-1] = piece;
+                            if(checkForThreeBot(i,j-1,piece,parentBoard)){
+                                parentBoard[oppPieces[oppPiece].first][oppPieces[oppPiece].second] = ' ';
+                            }
+                            parent->children.push_back(make_child(parent, nodeData(i,j-1,piece, numPlaced, parent->data.remaining, parentBoard)));
+                            if(checkForThreeBot(i,j-1,piece,parentBoard)){
+                                parentBoard[oppPieces[oppPiece].first][oppPieces[oppPiece].second] = oppPiece;
+                            }
+                            parentBoard[i][j-1] = ' ';
+                        }
+                    }
+                }
+            }
+        }
+    }
+	return;
+}
+void expandNode(std::shared_ptr<boardNode> rootNode){
+	if(rootNode->children.size()==0){
+		generateChildren(rootNode);
+	}
+	return;
+}
+shared_ptr<boardNode> randomMove(shared_ptr<boardNode> node){
+	int i = node->children.size();
+	int j = rand() % i;
+	return node->children[j];
+}
+int simRanPlayout(shared_ptr<boardNode> nodeToExplore, char opponent){
+	auto tempBoard = nodeToExplore->data.curBoard;
+	auto tempPiece = nodeToExplore->data.team;
+    auto placing = nodeToExplore->data.placing;
+	int state = 0;
+	if(tempPiece=='X'){
+				tempPiece='O';
+			}else{
+				tempPiece='X';
+			}
+    //check if the opponent wins with this board
+    if(!nodeToExplore->data.placing){
+        if(checkForWinner(tempBoard, tempPiece)){
+            state = 1;
+        }
+    }
+	if(state == 1){
+		nodeToExplore->data.winScore = 0;
+		return 1;
+	}
+    //switch to tracking bots team
+	if(tempPiece=='X'){
+				tempPiece='O';
+			}else{
+				tempPiece='X';
+			}
+	state = 3;
+	int randX = 0;
+	int randY = 0;
+    int move;
+    cout << "sim match" << endl;
+	while(state == 3){
+        //while game not over
+        //find a piece that can move
+        playTurn(tempBoard,tempPiece,placing);
+        if(!placing){
+			if(checkForWinner(tempBoard, tempPiece)){
+				state =  1;
+			}
+        }
+        //change teams
+        if(tempPiece=='x'){
+            tempPiece='O';
+        }else{
+            tempPiece='x';
+        }
+    //go again till game over
+	}
+    
+	if(tempPiece == nodeToExplore->data.team){
+ 		return state;
+	}
+	return 2;
+}
+void backpropagation(shared_ptr<boardNode> nodeToExplore, int playoutResult,char botTeam){
+	auto tempNode = nodeToExplore;
+	while(tempNode){
+		++tempNode->data.numberOfVisits;
+		if((tempNode->data.team != botTeam) && (playoutResult == 1)){
+			++tempNode->data.winScore;
+		}
+		tempNode = tempNode->parent;
+	}
+}
+shared_ptr<boardNode> getBestChild(shared_ptr<boardNode> rootNode){
+	int bestChildIndx = 0;
+	double bestScoreVal = -1;
+	for(int i = 0; i < rootNode->children.size() -1; i++){
+		// cout << (double)rootNode->children[i]->data.winScore << endl;
+		if(bestScoreVal < (double)rootNode->children[i]->data.winScore/(double)rootNode->children[i]->data.numberOfVisits){\
+
+			bestScoreVal = (double)rootNode->children[i]->data.winScore/(double)rootNode->children[i]->data.numberOfVisits;
+			bestChildIndx = i;
+		}
+	}
+	return rootNode->children[bestChildIndx];
+}
+std::pair<int,int> nextMove(vector<vector<char>> &match, char &monteBotsTeam){
+	char opponent = 'X';
+	if(opponent == monteBotsTeam){
+	opponent = 'O';
+	}
+	shared_ptr<boardNode> rootNode = std::make_shared<boardNode>();
+	rootNode->data.curBoard = match;
+	rootNode->data.team = monteBotsTeam;
+	generateChildren(rootNode);
+	auto startTime = std::chrono::system_clock::now();
+	auto endTime = std::chrono::system_clock::now();
+	std::chrono::duration<double> runTime = endTime - startTime;
+	int numberOfNodes = 0;
+	while ( runTime.count() < 5.0){
+		shared_ptr<boardNode> promisingNode = selectPromisingNode(rootNode);
+		if(promisingNode->children.size()==0){
+			expandNode(promisingNode);
+		}
+        
+		numberOfNodes += rootNode->children.size();
+		auto nodeToExplore = promisingNode;
+		numberOfNodes += promisingNode->children.size();
+		if(nodeToExplore->children.size() > 0){
+			nodeToExplore = randomMove(promisingNode);
+			promisingNode.reset();
+		}
+        ///////////////////////
+		auto playoutResults = simRanPlayout(nodeToExplore, opponent);
+        ///////////////////////
+        
+		backpropagation(nodeToExplore, playoutResults, monteBotsTeam);
+		numberOfNodes+= nodeToExplore->children.size();
+		nodeToExplore->children.clear();
+		nodeToExplore.reset();
+		endTime = std::chrono::system_clock::now();
+		runTime = endTime - startTime;
+	}
+	auto bestNode = getBestChild(rootNode);
+	cout << "MCTS created " << numberOfNodes << " Boards" << endl;
+	return {bestNode->data.lastMoveX, bestNode->data.lastMoveY};	
+}
+int botTurn( std::shared_ptr<Player> curPlayer, vector<vector<char>> &board){
+    std::pair<int,int> botsMove = nextMove(board, curPlayer->_piece);
+    board[botsMove.first][botsMove.second] = curPlayer->_piece;
+    printBoard(board);
+    if(checkForThreeBot(botsMove.first,botsMove.second,curPlayer->_piece,board)){
+        return -1;
+    }
+    return 0;
 
 }
 
 int menu(){
-    cout << "1. player vs player\n 2. player vs AI\n3. AI vs AI" << endl;
+    cout << "1. player vs player\n2. player vs AI\n3. AI vs AI" << endl;
     int userChoice;
     cin >> userChoice;
     return (userChoice);
+}
+
+int humanTurn(vector<vector<char>> &board, std::shared_ptr<Player> curPlayer, int turnCount){
+    
+    int removed = 0;
+    char letter;
+    int number;
+    int letterPos;
+    bool successfulMove = false; 
+    bool successfullyPlaced = false;
+ while(turnCount < 12){
+        
+        cout << curPlayer->_piece << "'s turn" << endl;
+        turnCount += 1;
+        while(!successfullyPlaced){
+            cout << "choose an available position to place your piece" << endl;
+            cout << "Enter the letter" << endl;
+            cin >> letter;
+            letterPos = playerChoice(letter);
+            cout << "Enter the number" << endl;
+            cin >> number;
+            --number;
+            curPlayer->_lastMoveX = letterPos;
+            curPlayer->_lastMoveY = number;
+            if(validPlacement(letterPos, number, board)){
+                successfullyPlaced = true;
+                placePiece(letterPos, number, board, curPlayer);
+            }else{
+                cout << "position invalid, try again" << endl;
+            }
+        }
+        if(checkForThree(curPlayer, board)){
+            takePiece(curPlayer, board);
+            removed = -1;
+        }
+        printBoard(board);
+        return removed;
+    }
+    int pieceX;
+    int pieceY;
+    while(!successfulMove && turnCount >= 12){
+        cout << "select a piece to move" << endl;
+        cout << "enter the letter" << endl;
+        cin >> letter;
+        pieceX = playerChoice(letter);
+        cout <<"enter the number" << endl;
+        cin >> pieceY;
+        --pieceY;
+        cout << "select where to move the piece" << endl;
+        cout << "enter the letter" << endl;
+        cin >> letter;
+        letterPos = playerChoice(letter);
+        cout <<"enter the number" << endl;
+        cin >> number;
+        --number;
+        if(validAdjacent(pieceX, pieceY, letterPos, number, board, curPlayer) || (curPlayer->_canFly && validPlacement(letterPos, number, board))){
+            successfulMove = true;
+            movePiece(pieceX, pieceY, letterPos, number, board, curPlayer);
+        }else{
+            cout << "position invalid, try again" << endl;
+        }
+    }
+    if(checkForThree(curPlayer, board)){
+        takePiece(curPlayer, board);
+        removed = -1;
+    }
+    return removed;
 }
 void sixMensMorris(){
     vector<vector<char>> board = {{' ', 'B', ' ', 'B', ' '},    //B is bad spots, not placeable. N is not placeable or crossable. Blanks are valid spots.
@@ -185,114 +726,43 @@ void sixMensMorris(){
     std::shared_ptr<Player> playerOne = makePlayer();
     std::shared_ptr<Player> playerTwo = makePlayer();
     playerTwo->_piece = 'O';
-    std::shared_ptr<Player> curPlayer = playerTwo;
     
     int userChoice = menu();
-    int goingFirst = rand() % 2 + 1;
-    bool playerOnesTurn = true;
     if(userChoice == 1){
         playerOne->_AIplayer = false;
         playerTwo->_AIplayer = false;
-        curPlayer = playerOne;
     }
     if(userChoice == 2){
         playerOne->_AIplayer = false;
-        curPlayer = playerOne;
-        if(goingFirst == 1){
-            cout << "You are going first!" << endl;
-        }
-        else{
-            playerOnesTurn = false;
-            cout << "The AI is going first" << endl;
-        }
     }
     int turnCount = 0;
-    char letter;
-    int number;
     int letterPos = 0;
-    int removed;
-    bool successfullyPlaced;
-    while(turnCount < 12){
-        removed = 0;
-        cout << curPlayer->_piece << "'s turn" << endl;
-        turnCount += 1;
-        successfullyPlaced = false;
-        if(curPlayer->_AIplayer == false){
-            while(!successfullyPlaced){
-                cout << "choose an available position to place your piece" << endl;
-                cout << "Enter the letter" << endl;
-                cin >> letter;
-                letterPos = playerChoice(letter);
-                cout << "Enter the number" << endl;
-                cin >> number;
-                --number;
-                curPlayer->_lastMoveX = letterPos;
-                curPlayer->_lastMoveY = number;
-                if(validPlacement(letterPos, number, board)){
-                    successfullyPlaced = true;
-                    placePiece(letterPos, number, board, curPlayer);
-                }else{
-                    cout << "position invalid, try again" << endl;
-                }
-            }
-        }else{
-            botTurn(curPlayer, board);
-        }
-        
-        if(checkForThree(curPlayer, board)){
-            takePiece(curPlayer, board);
-            removed = -1;
-        }
-        swapPlayer(playerOnesTurn, curPlayer, playerOne, playerTwo);
-        curPlayer->_remaining += removed;
-        printBoard(board);
-    }
-    curPlayer->_placing = false;
-    playerOne->_placing = false;
-    playerTwo->_placing = false;
     bool gameOver = false;
-    bool successfulMove = false;
-    int pieceX;
-    int pieceY;
+    int remove;
     while(!gameOver){
-        if(curPlayer->_AIplayer){
-            botTurn(curPlayer, board);
+        if(playerOne->_AIplayer){
+            remove = botTurn(playerOne, board);
         }else{
-            while(!successfulMove){
-                cout << "select a piece to move" << endl;
-                cout << "enter the letter" << endl;
-                cin >> letter;
-                pieceX = playerChoice(letter);
-                cout <<"enter the number" << endl;
-                cin >> pieceY;
-                --pieceY;
-                cout << "select where to move the piece" << endl;
-                cout << "enter the letter" << endl;
-                cin >> letter;
-                letterPos = playerChoice(letter);
-                cout <<"enter the number" << endl;
-                cin >> number;
-                --number;
-                if(validAdjacent(pieceX, pieceY, letterPos, number, board, curPlayer) || (curPlayer->_canFly && validPlacement(letterPos, number, board))){
-                    successfulMove = true;
-                    movePiece(pieceX, pieceY, letterPos, number, board, curPlayer);
-                }else{
-                    cout << "position invalid, try again" << endl;
-                }
-            }
-            successfulMove = false;
+            remove = humanTurn(board, playerOne, turnCount);
         }
-        if(checkForThree(curPlayer, board)){
-            takePiece(curPlayer, board);
-            swapPlayer(playerOnesTurn,curPlayer,playerOne, playerTwo);
-            --curPlayer->_remaining;
-        }else{
-            swapPlayer(playerOnesTurn,curPlayer,playerOne, playerTwo);
-        }
-        if(playerOne->_remaining == 2 || playerTwo->_remaining == 2){
+        playerTwo->_remaining -=remove;
+        remove = 0;
+        if(playerTwo->_remaining == 2){
+            cout << playerOne->_piece <<"'s have won" << endl;
             gameOver = true;
-            swapPlayer(playerOnesTurn,curPlayer,playerOne, playerTwo);
-            cout << curPlayer->_piece << "'s have won" << endl;
+            return;
+        }
+        if(playerTwo->_AIplayer){
+            remove = botTurn(playerTwo, board);
+        }else{
+            humanTurn(board, playerTwo, turnCount);
+        }
+        playerOne->_remaining -=remove;
+        remove = 0;
+        if(playerOne->_remaining == 2){
+            cout << playerTwo->_piece <<"'s have won" << endl;
+            gameOver = true;
+            return;
         }
 
     }
