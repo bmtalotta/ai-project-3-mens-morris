@@ -14,6 +14,7 @@ using std::shared_ptr;
 void printBoard( vector<vector<char>> board){
     int positionTrackerX = -1;
     int positionTrackerY = -1;
+    cout << "  1     2     3     4     5" << endl;
     vector<vector<string>> blankDisplayBoard = {{"A1","-", "-", "-", "A3", "-","-","-","A5"},
                                                 {"|", " ", " ", " ", "|"," ", " "," ", "|"},
                                                 {"|", " ", "B2", "-", "B3","-", "B4"," ", "|"},
@@ -26,7 +27,20 @@ void printBoard( vector<vector<char>> board){
     for(int i = 0; i < blankDisplayBoard.size(); ++i){
         if(i%2 == 0){
             ++positionTrackerY;
-        };
+            if(positionTrackerY == 0){
+                cout << "A ";
+            }else if(positionTrackerY == 1){
+                cout << "B ";
+            }else if(positionTrackerY == 2){
+                cout << "C ";
+            }else if(positionTrackerY == 3){
+                cout << "D ";
+            }else if(positionTrackerY == 4){
+                cout << "E ";
+            }
+        }else{
+            cout << "  ";
+        }
         for(int j = 0; j < blankDisplayBoard[i].size(); ++j){
             if(blankDisplayBoard[i][j].size() == 2){
                 ++positionTrackerX;
@@ -62,28 +76,32 @@ bool validAdjacent(int startX, int startY, int endX, int endY, vector<vector<cha
     int distancex = endX-startX;
     int distancey = endY-startY;
     int direction = 1;
+    
+    if(board[startX][startY] != curPlayer->_piece){
+        return false;
+    }
     if(distancey < 0 || distancex < 0){
         direction = -1;
     }
-    if(distancey != 0 && distancey != 0){
+    if(distancex != 0 && distancey != 0){
         return false;
     }
     if(distancex + distancey > 2 || distancex + distancey < -2){
         return false;
     }
-    for(int i = 0; i < abs(distancex); ++i){
-        if(board[(startX + i * direction)][startY] == ' '){
+    for(int i = 1; i < abs(distancex) + 1; ++i){
+        if(board[(startX + (i * direction))][startY] == ' '){
             return true;
         }
-        if(board[(startX + i * direction)][startY] == 'N'){
+        if(board[(startX + (i * direction))][startY] == 'N'){
             return false;
         }
     }
-    for(int i = 0; i < abs(distancey); ++i){
-        if(board[startX][(startY + i * direction)] == ' '){
+    for(int i = 1; i < abs(distancey) + 1; ++i){
+        if(board[startX][(startY + (i * direction))] == ' '){
             return true;
         }
-        if(board[startX][(startY + i * direction)] == 'N'){
+        if(board[startX][(startY + (i * direction))] == 'N'){
             return false;
         }
     }
@@ -105,7 +123,7 @@ void movePiece(int startX, int startY, int endX, int endY, vector<vector<char>> 
 bool checkForThree( std::shared_ptr<Player> curPlayer, vector<vector<char>> &board){
     int horInRow = 0;
     int vertInRow = 0;
-    for(int i = 0; i < board.size(); ++i){
+    for(int i = 0; i < 5; ++i){
         if(board[curPlayer->_lastMoveX][i] == curPlayer->_piece){
             vertInRow++;
         }else if(board[curPlayer->_lastMoveX][i] == ' ' || board[curPlayer->_lastMoveX][i] == 'N'){
@@ -158,19 +176,30 @@ int playerChoice(char &letter){
     return letterPos;
 }
 void takePiece( std::shared_ptr<Player> curPlayer, vector<vector<char>> &board){
+    printBoard(board);
     char takeable = 'X';
     char letter;
     int y;
     int x;
-    if(curPlayer->_piece == takeable){
-        takeable = 'O';
+    bool successfullTake = false;
+    while(!successfullTake){
+        if(curPlayer->_piece == takeable){
+            takeable = 'O';
+        }
+        cout << "enter position of oponents piece you want to take" << endl;
+        cin >> letter;
+        cin >> y;
+        --y;
+        x = playerChoice(letter);
+        if(board[x][y] == takeable){
+            board[x][y] = ' ';
+            successfullTake = true;
+            cout << "piece successfully taken" << endl;
+        }else{
+            cout << "chosen position invalid, pick again" << endl;
+            printBoard(board);
+        }
     }
-    cout << "enter position of oponents piece you want to take" << endl;
-    cin >> letter;
-    cin >> y;
-    --y;
-    x = playerChoice(letter);
-    board[x][y] = ' ';
 }
 struct nodeData{
 	vector<vector<char>> curBoard;
@@ -295,7 +324,7 @@ void playTurn(vector<vector<char>> &board, char teamPlaying,bool placing){
         }
     }
     
-    printBoard(board);
+    //printBoard(board);
     if(count == 3 && !placing){
         canFly = true;
     }
@@ -368,7 +397,7 @@ void playTurn(vector<vector<char>> &board, char teamPlaying,bool placing){
 
 void generateChildren(shared_ptr<boardNode> parent){
 	vector<vector<char>> parentBoard = parent->data.curBoard;
-    if(parent->data.numPlaced < 6){
+    if(parent->data.numPlaced < 12){
         parent->data.placing = true;
     }else{
         parent->data.placing = false;
@@ -544,7 +573,7 @@ int simRanPlayout(shared_ptr<boardNode> nodeToExplore, char opponent){
 	int randX = 0;
 	int randY = 0;
     int move;
-    cout << "sim match" << endl;
+    //cout << "sim match" << endl;
 	while(state == 3){
         //while game not over
         //find a piece that can move
@@ -591,7 +620,7 @@ shared_ptr<boardNode> getBestChild(shared_ptr<boardNode> rootNode){
 	}
 	return rootNode->children[bestChildIndx];
 }
-std::pair<int,int> nextMove(vector<vector<char>> &match, char &monteBotsTeam){
+std::pair<int,int> nextMove(vector<vector<char>> &match, char &monteBotsTeam, int turnCount){
 	char opponent = 'X';
 	if(opponent == monteBotsTeam){
 	opponent = 'O';
@@ -599,6 +628,12 @@ std::pair<int,int> nextMove(vector<vector<char>> &match, char &monteBotsTeam){
 	shared_ptr<boardNode> rootNode = std::make_shared<boardNode>();
 	rootNode->data.curBoard = match;
 	rootNode->data.team = monteBotsTeam;
+    if(turnCount < 12){
+    rootNode->data.numPlaced = turnCount;
+    }else{
+        
+    rootNode->data.numPlaced = 12;
+    }
 	generateChildren(rootNode);
 	auto startTime = std::chrono::system_clock::now();
 	auto endTime = std::chrono::system_clock::now();
@@ -632,10 +667,9 @@ std::pair<int,int> nextMove(vector<vector<char>> &match, char &monteBotsTeam){
 	cout << "MCTS created " << numberOfNodes << " Boards" << endl;
 	return {bestNode->data.lastMoveX, bestNode->data.lastMoveY};	
 }
-int botTurn( std::shared_ptr<Player> curPlayer, vector<vector<char>> &board){
-    std::pair<int,int> botsMove = nextMove(board, curPlayer->_piece);
+int botTurn( std::shared_ptr<Player> curPlayer, vector<vector<char>> &board, int turnCount){
+    std::pair<int,int> botsMove = nextMove(board, curPlayer->_piece, turnCount);
     board[botsMove.first][botsMove.second] = curPlayer->_piece;
-    printBoard(board);
     if(checkForThreeBot(botsMove.first,botsMove.second,curPlayer->_piece,board)){
         return -1;
     }
@@ -658,8 +692,7 @@ int humanTurn(vector<vector<char>> &board, std::shared_ptr<Player> curPlayer, in
     int letterPos;
     bool successfulMove = false; 
     bool successfullyPlaced = false;
- while(turnCount < 12){
-        
+    while(turnCount < 12){
         cout << curPlayer->_piece << "'s turn" << endl;
         turnCount += 1;
         while(!successfullyPlaced){
@@ -683,12 +716,12 @@ int humanTurn(vector<vector<char>> &board, std::shared_ptr<Player> curPlayer, in
             takePiece(curPlayer, board);
             removed = -1;
         }
-        printBoard(board);
         return removed;
     }
     int pieceX;
     int pieceY;
     while(!successfulMove && turnCount >= 12){
+        cout << curPlayer->_piece << "'s turn" << endl;
         cout << "select a piece to move" << endl;
         cout << "enter the letter" << endl;
         cin >> letter;
@@ -705,9 +738,12 @@ int humanTurn(vector<vector<char>> &board, std::shared_ptr<Player> curPlayer, in
         --number;
         if(validAdjacent(pieceX, pieceY, letterPos, number, board, curPlayer) || (curPlayer->_canFly && validPlacement(letterPos, number, board))){
             successfulMove = true;
+            curPlayer->_lastMoveX = letterPos;
+            curPlayer->_lastMoveY = number;
             movePiece(pieceX, pieceY, letterPos, number, board, curPlayer);
         }else{
-            cout << "position invalid, try again" << endl;
+            cout << "position invalid, try again"  << endl;
+            printBoard(board);
         }
     }
     if(checkForThree(curPlayer, board)){
@@ -740,24 +776,29 @@ void sixMensMorris(){
     bool gameOver = false;
     int remove;
     while(!gameOver){
+        printBoard(board);
         if(playerOne->_AIplayer){
-            remove = botTurn(playerOne, board);
+            remove = botTurn(playerOne, board, turnCount);
         }else{
             remove = humanTurn(board, playerOne, turnCount);
         }
-        playerTwo->_remaining -=remove;
+        playerTwo->_remaining +=remove;
         remove = 0;
+        turnCount++;
+        printBoard(board);
         if(playerTwo->_remaining == 2){
             cout << playerOne->_piece <<"'s have won" << endl;
             gameOver = true;
             return;
         }
         if(playerTwo->_AIplayer){
-            remove = botTurn(playerTwo, board);
+            remove = botTurn(playerTwo, board, turnCount);
         }else{
             humanTurn(board, playerTwo, turnCount);
         }
-        playerOne->_remaining -=remove;
+        turnCount++;
+        playerOne->_remaining +=remove;
+        cout << playerOne->_remaining << playerTwo->_remaining << endl;
         remove = 0;
         if(playerOne->_remaining == 2){
             cout << playerTwo->_piece <<"'s have won" << endl;
