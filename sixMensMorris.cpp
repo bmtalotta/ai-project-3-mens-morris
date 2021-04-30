@@ -48,26 +48,33 @@ void printBoard( vector<vector<char>> board){
                     ++positionTrackerX;
                 }
                 if(board[positionTrackerY][positionTrackerX] != ' '){
-                    if(board[positionTrackerX][positionTrackerY] == 'X'){
+                    if(board[positionTrackerY][positionTrackerX] == 'X'){
                         printf("\033[31m");
-                    }else{
+                        cout << board[positionTrackerY][positionTrackerX] << ' ' << ' ';
+                    }else if(board[positionTrackerY][positionTrackerX] == 'O'){
                         printf("\033[34m");
+                        cout << board[positionTrackerY][positionTrackerX] << ' ' << ' ';
+                    }else{
+                        printf("\033[0m");
+                        cout << board[positionTrackerY][positionTrackerX] << ' ' << ' ';
                     }
-                    cout << board[positionTrackerY][positionTrackerX] << ' ' << ' ';
-                    printf("\033[0m");
                 }
                 else{
                     cout << blankDisplayBoard[i][j] << ' ';
                 }
             }
             else{
-            cout << blankDisplayBoard[i][j] << ' ';
+                
+                printf("\033[0m");
+                cout << blankDisplayBoard[i][j] << ' ';
             }
             if(blankDisplayBoard[i][j].size() != 2){
                 cout << ' ';
             }
         }
         positionTrackerX = -1;
+        
+        printf("\033[0m");
         cout << std::endl;
     }
 }
@@ -255,10 +262,10 @@ bool checkForWinner(vector<vector<char>> board, char teamChecking){
         for(int j = 0; j < 5; j++){
             if(board[i][j] == opponentTeam){
                 count++;
-                
             }
         }
     }
+    
     if(count == 2){
        return true;
     }
@@ -329,7 +336,8 @@ void playTurn(vector<vector<char>> &board, char teamPlaying,bool placing){
             }
         }
     }
-    cout << count << endl;
+    printBoard(board);
+    cout << count << teamPlaying << endl;
     //printBoard(board);
     if(count == 3 && !placing){
         canFly = true;
@@ -625,6 +633,7 @@ int simRanPlayout(shared_ptr<boardNode> nodeToExplore, char opponent){
                 nodeToExplore->data.placing = false;
             }
         }
+        cout << "checking for " << tempPiece << "'s win" << endl;
         if(checkForWinner(tempBoard, tempPiece)){
             state =  1;
         }
@@ -845,7 +854,6 @@ void sixMensMorris(){
         }
         turnCount++;
         playerOne->_remaining +=remove;
-        cout << playerOne->_remaining << playerTwo->_remaining << endl;
         remove = 0;
         if(playerOne->_remaining == 2){
             cout << playerTwo->_piece <<"'s have won" << endl;
