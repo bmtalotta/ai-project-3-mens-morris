@@ -10,7 +10,7 @@ using std::vector;
 #include<math.h>
 #include<chrono>
 using std::shared_ptr;
-
+#include <stdio.h>
 void printBoard( vector<vector<char>> board){
     int positionTrackerX = -1;
     int positionTrackerY = -1;
@@ -48,7 +48,13 @@ void printBoard( vector<vector<char>> board){
                     ++positionTrackerX;
                 }
                 if(board[positionTrackerY][positionTrackerX] != ' '){
+                    if(board[positionTrackerX][positionTrackerY] == 'X'){
+                        printf("\033[31m");
+                    }else{
+                        printf("\033[34m");
+                    }
                     cout << board[positionTrackerY][positionTrackerX] << ' ' << ' ';
+                    printf("\033[0m");
                 }
                 else{
                     cout << blankDisplayBoard[i][j] << ' ';
@@ -323,7 +329,7 @@ void playTurn(vector<vector<char>> &board, char teamPlaying,bool placing){
             }
         }
     }
-    
+    cout << count << endl;
     //printBoard(board);
     if(count == 3 && !placing){
         canFly = true;
@@ -337,17 +343,20 @@ void playTurn(vector<vector<char>> &board, char teamPlaying,bool placing){
         randomSpot = rand() % openSpots.size();
     }
     if(canFly){//for when flying
-    cout << count << endl;
-    cout << "flying" << endl;
+        
+       // cout << "fly" << endl;
         board[myPieces[moveMyPiece].first][myPieces[moveMyPiece].second] = ' ';
         moveX = openSpots[randomSpot].first;
         moveY = openSpots[randomSpot].second;
+        
     }else if(placing){//for when placing
-    //cout << "placing" <<endl;
+        
+    //cout << "place" << endl;
         moveX = openSpots[randomSpot].first;
         moveY = openSpots[randomSpot].second;
     }else{
-        cout << "adjacent" << endl;
+        
+   // cout << "adj" << endl;
         for(int i = 0; i < 5; ++i){
 			for(int j = 0; j < 5; ++j){
 				if(board[i][j] == teamPlaying){
@@ -356,6 +365,12 @@ void playTurn(vector<vector<char>> &board, char teamPlaying,bool placing){
                             startPos = {i,j};
                             endPos = {i+1,j};
                             posibleMoves.push_back({startPos,endPos});
+                        }else if(i < 3){
+                            if(board[i+2][j] == ' ' && board[i+1][j] != 'N'){
+                                startPos = {i,j};
+                                endPos = {i+2,j};
+                                posibleMoves.push_back({startPos,endPos});
+                            }
                         }
                     }
                     if(i!=0){
@@ -363,6 +378,12 @@ void playTurn(vector<vector<char>> &board, char teamPlaying,bool placing){
                             startPos = {i,j};
                             endPos = {i-1,j};
                             posibleMoves.push_back({startPos,endPos});
+                        }else if(i > 1){
+                            if(board[i-2][j] == ' ' && board[i+1][j] != 'N'){
+                                startPos = {i,j};
+                                endPos = {i-2,j};
+                                posibleMoves.push_back({startPos,endPos});
+                            }
                         }
                     }
                     if(j!=4){
@@ -370,6 +391,12 @@ void playTurn(vector<vector<char>> &board, char teamPlaying,bool placing){
                             startPos = {i,j};
                             endPos = {i,j+1};
                             posibleMoves.push_back({startPos,endPos});
+                        }else if(j < 3){
+                            if(board[i][j+2] == ' ' && board[i][j+1] != 'N'){
+                                startPos = {i,j};
+                                endPos = {i,j+2};
+                                posibleMoves.push_back({startPos,endPos});
+                            }
                         }
                     }
                     if(j!=0){
@@ -377,15 +404,25 @@ void playTurn(vector<vector<char>> &board, char teamPlaying,bool placing){
                             startPos = {i,j};
                             endPos = {i,j-1};
                             posibleMoves.push_back({startPos,endPos});
+                        }else if(j > 1){
+                            if(board[i][j-2] == ' ' && board[i][j-1] != 'N'){
+                                startPos = {i,j};
+                                endPos = {i,j-2};
+                                posibleMoves.push_back({startPos,endPos});
+                            }
                         }
                     }
 			    }
             }
 		}
+        
         randMove = rand() % posibleMoves.size();
+        cout << posibleMoves[randMove].first.first << ", " << posibleMoves[randMove].first.second << "; " << posibleMoves[randMove].second.first << ", " << posibleMoves[randMove].second.second << endl;
         board[posibleMoves[randMove].first.first][posibleMoves[randMove].first.second] = ' ';
         moveX = posibleMoves[randMove].second.first;
         moveY = posibleMoves[randMove].second.second;
+        
+        cout << "endadj2" << endl;
     }
     int takeOpp;
     board[moveX][moveY] = teamPlaying;
@@ -573,16 +610,25 @@ int simRanPlayout(shared_ptr<boardNode> nodeToExplore, char opponent){
 	int randX = 0;
 	int randY = 0;
     int move;
+    int numPlaced = nodeToExplore->data.numPlaced;
     //cout << "sim match" << endl;
 	while(state == 3){
         //while game not over
         //find a piece that can move
-        playTurn(tempBoard,tempPiece,placing);
-        if(!placing){
-			if(checkForWinner(tempBoard, tempPiece)){
-				state =  1;
-			}
+        playTurn(tempBoard,tempPiece,nodeToExplore->data.placing);
+        printBoard(tempBoard);
+        cout << endl;
+
+        if(nodeToExplore->data.placing){
+            numPlaced++;
+            if(numPlaced >= 12){
+                nodeToExplore->data.placing = false;
+            }
         }
+        if(checkForWinner(tempBoard, tempPiece)){
+            state =  1;
+        }
+        
         //change teams
         if(tempPiece=='x'){
             tempPiece='O';
@@ -620,7 +666,7 @@ shared_ptr<boardNode> getBestChild(shared_ptr<boardNode> rootNode){
 	}
 	return rootNode->children[bestChildIndx];
 }
-std::pair<int,int> nextMove(vector<vector<char>> &match, char &monteBotsTeam, int turnCount){
+std::pair<int,int> nextMove(vector<vector<char>> &match, char &monteBotsTeam, int turnCount, int rem){
 	char opponent = 'X';
 	if(opponent == monteBotsTeam){
 	opponent = 'O';
@@ -628,6 +674,7 @@ std::pair<int,int> nextMove(vector<vector<char>> &match, char &monteBotsTeam, in
 	shared_ptr<boardNode> rootNode = std::make_shared<boardNode>();
 	rootNode->data.curBoard = match;
 	rootNode->data.team = monteBotsTeam;
+    rootNode->data.remaining = rem;
     if(turnCount < 12){
     rootNode->data.numPlaced = turnCount;
     }else{
@@ -668,7 +715,7 @@ std::pair<int,int> nextMove(vector<vector<char>> &match, char &monteBotsTeam, in
 	return {bestNode->data.lastMoveX, bestNode->data.lastMoveY};	
 }
 int botTurn( std::shared_ptr<Player> curPlayer, vector<vector<char>> &board, int turnCount){
-    std::pair<int,int> botsMove = nextMove(board, curPlayer->_piece, turnCount);
+    std::pair<int,int> botsMove = nextMove(board, curPlayer->_piece, turnCount,curPlayer->_remaining);
     board[botsMove.first][botsMove.second] = curPlayer->_piece;
     if(checkForThreeBot(botsMove.first,botsMove.second,curPlayer->_piece,board)){
         return -1;
