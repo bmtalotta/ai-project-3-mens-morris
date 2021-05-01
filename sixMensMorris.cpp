@@ -217,8 +217,10 @@ void takePiece( std::shared_ptr<Player> curPlayer, vector<vector<char>> &board){
 struct nodeData{
 	vector<vector<char>> curBoard;
 	int numberOfVisits=0;
-	int lastMoveX=0;
-	int lastMoveY=0;
+	int lastMovestartX=0;
+	int lastMovestartY=0;
+    int lastMoveendX=0;
+	int lastMoveendY=0;
 	int winScore=0;
 	char team;
 	int gameState=3;
@@ -229,9 +231,11 @@ struct nodeData{
 	nodeData(){
 		
 	}
-	nodeData(int x, int y, char piece, int placed, int rem, vector<vector<char>> board){
-		lastMoveY = y;
-		lastMoveX = x;
+	nodeData(int x, int y,int fromX, int fromY, char piece, int placed, int rem, vector<vector<char>> board){
+		lastMoveendY = y;
+		lastMoveendX = x;
+        lastMovestartX = fromX;
+        lastMovestartY = fromY;
 		team=piece;
 		curBoard = board;
         remaining = rem;
@@ -308,6 +312,7 @@ shared_ptr<boardNode> selectPromisingNode(shared_ptr<boardNode> rootNode){
 }
 
 void playTurn(vector<vector<char>> &board, char teamPlaying,bool placing){
+    //cout << "this cancer last" << endl;
     bool canFly =false;
     int count = 0;
     int randMove;
@@ -361,14 +366,12 @@ void playTurn(vector<vector<char>> &board, char teamPlaying,bool placing){
 			for(int j = 0; j < 5; ++j){
 				if(board[i][j] == teamPlaying){
                     if(i!=4){
-                        //cout << "a1" <<endl;
                         if(board[i+1][j] == ' '){
                             startPos = {i,j};
                             endPos = {i+1,j};
                             posibleMoves.push_back({startPos,endPos});
                         }else if(i < 3){
-                            //cout << "a2" <<endl;
-                            if(board[i+2][j] == ' ' && board[i+1][j] != 'N'){
+                            if(board[i+2][j] == ' ' && board[i+1][j] == 'B'){
                                 startPos = {i,j};
                                 endPos = {i+2,j};
                                 posibleMoves.push_back({startPos,endPos});
@@ -376,14 +379,12 @@ void playTurn(vector<vector<char>> &board, char teamPlaying,bool placing){
                         }
                     }
                     if(i!=0){
-                        //cout << "b1" <<endl;
                         if(board[i-1][j] == ' '){
                             startPos = {i,j};
                             endPos = {i-1,j};
                             posibleMoves.push_back({startPos,endPos});
                         }else if(i > 1){
-                            //cout << "b2" <<endl;
-                            if(board[i-2][j] == ' ' && board[i-1][j] != 'N'){
+                            if(board[i-2][j] == ' ' && board[i-1][j] == 'B'){
                                 startPos = {i,j};
                                 endPos = {i-2,j};
                                 posibleMoves.push_back({startPos,endPos});
@@ -391,14 +392,12 @@ void playTurn(vector<vector<char>> &board, char teamPlaying,bool placing){
                         }
                     }
                     if(j!=4){
-                        //cout << "c1" <<endl;
                         if(board[i][j+1] == ' '){
                             startPos = {i,j};
                             endPos = {i,j+1};
                             posibleMoves.push_back({startPos,endPos});
                         }else if(j < 3){
-                            //cout << "c2" <<endl;
-                            if(board[i][j+2] == ' ' && board[i][j+1] != 'N'){
+                            if(board[i][j+2] == ' ' && board[i][j+1] == 'B'){
                                 startPos = {i,j};
                                 endPos = {i,j+2};
                                 posibleMoves.push_back({startPos,endPos});
@@ -406,14 +405,12 @@ void playTurn(vector<vector<char>> &board, char teamPlaying,bool placing){
                         }
                     }
                     if(j!=0){
-                        //cout << "d1" <<endl;
                         if(board[i][j-1] == ' '){
                             startPos = {i,j};
                             endPos = {i,j-1};
                             posibleMoves.push_back({startPos,endPos});
                         }else if(j > 1){
-                            //cout << "d2" <<endl;
-                            if(board[i][j-2] == ' ' && board[i][j-1] != 'N'){
+                            if(board[i][j-2] == ' ' && board[i][j-1] == 'B'){
                                 startPos = {i,j};
                                 endPos = {i,j-2};
                                 posibleMoves.push_back({startPos,endPos});
@@ -423,6 +420,9 @@ void playTurn(vector<vector<char>> &board, char teamPlaying,bool placing){
 			    }
             }
 		}
+        if(posibleMoves.size() == 0){//skip turn if no possible moves
+            return;
+        }
         randMove = rand() % posibleMoves.size();
         board[posibleMoves[randMove].first.first][posibleMoves[randMove].first.second] = ' ';
         moveX = posibleMoves[randMove].second.first;
@@ -444,11 +444,10 @@ void generateChildren(shared_ptr<boardNode> parent){
         parent->data.placing = false;
     }
     int count = 0;
-	char piece = 'X';
-    char oppPiece = 'O';
-	if(parent->data.team=='X'){
-		piece='O';
-        oppPiece = 'X';
+	char piece = 'O';
+    char oppPiece = parent->data.team;
+	if(parent->data.team=='O'){
+        piece = 'X';
 	}
     vector<std::pair<int,int>> oppPieces;
     for(int i = 0; i < 5; i++){
@@ -475,7 +474,9 @@ void generateChildren(shared_ptr<boardNode> parent){
     if(oppPieces.size() > 1){
         remove = rand() % oppPieces.size();
     }
+    //cout << "here" << endl;
     if(parent->data.placing){
+        //cout << "inplace" << endl;
         for (int i = 0; i < 5; i++){
             for(int j = 0; j < 5; j++){
                 if(parentBoard[i][j] == ' '){
@@ -483,7 +484,7 @@ void generateChildren(shared_ptr<boardNode> parent){
                     if(checkForThreeBot(i,j,piece,parentBoard)){
                         parentBoard[oppPieces[remove].first][oppPieces[remove].second] = ' ';
                     }
-                    parent->children.push_back(make_child(parent, nodeData(i,j,piece, numPlaced, parent->data.remaining, parentBoard)));
+                    parent->children.push_back(make_child(parent, nodeData(i,j,0,0,piece, numPlaced, parent->data.remaining, parentBoard)));
                     if(checkForThreeBot(i,j,piece,parentBoard)){
                         parentBoard[oppPieces[remove].first][oppPieces[remove].second] = oppPiece;
                     }
@@ -492,6 +493,7 @@ void generateChildren(shared_ptr<boardNode> parent){
             }
         }
     }else if(parent->data.canFly){
+        cout << "infly" << endl;
         for (int i = 0; i < 5; i++){
             for(int j = 0; j < 5; j++){
                 if(parentBoard[i][j] == piece){
@@ -503,7 +505,7 @@ void generateChildren(shared_ptr<boardNode> parent){
                                 if(checkForThreeBot(k,l,piece,parentBoard)){
                                     parentBoard[oppPieces[remove].first][oppPieces[remove].second] = ' ';
                                 }
-                                parent->children.push_back(make_child(parent, nodeData(k,l,piece, numPlaced, parent->data.remaining, parentBoard)));
+                                parent->children.push_back(make_child(parent, nodeData(k,l,i,j,piece, numPlaced, parent->data.remaining, parentBoard)));
                                 if(checkForThreeBot(i,j,piece,parentBoard)){
                                     parentBoard[oppPieces[remove].first][oppPieces[remove].second] = oppPiece;
                                 }
@@ -517,116 +519,143 @@ void generateChildren(shared_ptr<boardNode> parent){
             }
         }
     }else{
+        //cout << "in1" << endl;
             for (int i = 0; i < 5; i++){
                 for(int j = 0; j < 5; j++){
                     if(parentBoard[i][j] == piece){
                         if(i!=4){
+                            //cout << "in2" << endl;
                             if(parentBoard[i+1][j] == ' '){
                                 parentBoard[i+1][j] = piece;
+                                parentBoard[i][j] = ' ';
                                 if(checkForThreeBot(i+1,j,piece,parentBoard)){
-                                    parentBoard[oppPieces[oppPiece].first][oppPieces[oppPiece].second] = ' ';
+                                    parentBoard[oppPieces[remove].first][oppPieces[remove].second] = ' ';
                                 }
-                                parent->children.push_back(make_child(parent, nodeData(i+1,j,piece, numPlaced, parent->data.remaining, parentBoard)));
+                                parent->children.push_back(make_child(parent, nodeData(i+1,j,i,j,piece, numPlaced, parent->data.remaining, parentBoard)));
                                 if(checkForThreeBot(i+1,j,piece,parentBoard)){
-                                    parentBoard[oppPieces[oppPiece].first][oppPieces[oppPiece].second] = oppPiece;
+                                    parentBoard[oppPieces[remove].first][oppPieces[remove].second] = oppPiece;
                                 }
                                 parentBoard[i+1][j] = ' ';
+                                parentBoard[i][j] = piece;
                             }else if(i < 3){
-                                if(parentBoard[i+2][j] == ' ' && parentBoard[i+1][j] != 'N'){
+                                //cout << "in3" << endl;
+                                if(parentBoard[i+2][j] == ' ' && parentBoard[i+1][j] == 'B'){
                                     parentBoard[i+2][j] = piece;
+                                    parentBoard[i][j] = ' ';
                                     if(checkForThreeBot(i+2,j,piece,parentBoard)){
-                                        parentBoard[oppPieces[oppPiece].first][oppPieces[oppPiece].second] = ' ';
+                                        parentBoard[oppPieces[remove].first][oppPieces[remove].second] = ' ';
                                     }
-                                    parent->children.push_back(make_child(parent, nodeData(i+2,j,piece, numPlaced, parent->data.remaining, parentBoard)));
+                                    parent->children.push_back(make_child(parent, nodeData(i+2,j,i,j,piece, numPlaced, parent->data.remaining, parentBoard)));
                                     if(checkForThreeBot(i+2,j,piece,parentBoard)){
-                                        parentBoard[oppPieces[oppPiece].first][oppPieces[oppPiece].second] = oppPiece;
+                                        parentBoard[oppPieces[remove].first][oppPieces[remove].second] = oppPiece;
                                     }
                                     parentBoard[i+2][j] = ' ';
+                                    parentBoard[i][j] = piece;
                                 }
                             }
                         if(i!=0){
+                            //cout << "in4" << endl;
                             if(parentBoard[i-1][j] == ' '){
                                 parentBoard[i-1][j] = piece;
+                                parentBoard[i][j] = ' ';
                                 if(checkForThreeBot(i-1,j,piece,parentBoard)){
-                                    parentBoard[oppPieces[oppPiece].first][oppPieces[oppPiece].second] = ' ';
+                                    parentBoard[oppPieces[remove].first][oppPieces[remove].second] = ' ';
                                 }
-                                parent->children.push_back(make_child(parent, nodeData(i-1,j,piece, numPlaced, parent->data.remaining, parentBoard)));
+                                parent->children.push_back(make_child(parent, nodeData(i-1,j,i,j,piece, numPlaced, parent->data.remaining, parentBoard)));
                                 if(checkForThreeBot(i-1,j,piece,parentBoard)){
-                                    parentBoard[oppPieces[oppPiece].first][oppPieces[oppPiece].second] = oppPiece;
+                                    parentBoard[oppPieces[remove].first][oppPieces[remove].second] = oppPiece;
                                 }
                                 parentBoard[i-1][j] = ' ';
+                                parentBoard[i][j] = piece;
                             }else if(i > 1){
-                                if(parentBoard[i-2][j] == ' ' && parentBoard[i-1][j] != 'N'){
+                                //cout << "in5" << endl;
+                                if(parentBoard[i-2][j] == ' ' && parentBoard[i-1][j] == 'B'){
                                     parentBoard[i-2][j] = piece;
+                                    parentBoard[i][j] = ' ';
                                     if(checkForThreeBot(i-2,j,piece,parentBoard)){
-                                        parentBoard[oppPieces[oppPiece].first][oppPieces[oppPiece].second] = ' ';
+                                        parentBoard[oppPieces[remove].first][oppPieces[remove].second] = ' ';
                                     }
-                                    parent->children.push_back(make_child(parent, nodeData(i-2,j,piece, numPlaced, parent->data.remaining, parentBoard)));
+                                    parent->children.push_back(make_child(parent, nodeData(i-2,j,i,j,piece, numPlaced, parent->data.remaining, parentBoard)));
                                     if(checkForThreeBot(i-2,j,piece,parentBoard)){
-                                        parentBoard[oppPieces[oppPiece].first][oppPieces[oppPiece].second] = oppPiece;
+                                        parentBoard[oppPieces[remove].first][oppPieces[remove].second] = oppPiece;
                                     }
                                     parentBoard[i-2][j] = ' ';
+                                    parentBoard[i][j] = piece;
                                 }
                             }
                         }
                         if(j!=4){
+                            //cout << "in6" << endl;
                             if(parentBoard[i][j+1] == ' '){
                                 parentBoard[i][j+1] = piece;
+                                parentBoard[i][j] = ' ';
                                 if(checkForThreeBot(i,j+1,piece,parentBoard)){
-                                    parentBoard[oppPieces[oppPiece].first][oppPieces[oppPiece].second] = ' ';
+                                    parentBoard[oppPieces[remove].first][oppPieces[remove].second] = ' ';
                                 }
-                                parent->children.push_back(make_child(parent, nodeData(i,j+1,piece, numPlaced, parent->data.remaining, parentBoard)));
+                                parent->children.push_back(make_child(parent, nodeData(i,j+1,i,j,piece, numPlaced, parent->data.remaining, parentBoard)));
                                 if(checkForThreeBot(i,j+1,piece,parentBoard)){
-                                    parentBoard[oppPieces[oppPiece].first][oppPieces[oppPiece].second] = oppPiece;
+                                    parentBoard[oppPieces[remove].first][oppPieces[remove].second] = oppPiece;
                                 }
                                 parentBoard[i][j+1] = ' ';
-                            }
-                        }else if(j < 3){
-                            if(parentBoard[i][j+2] == ' ' && parentBoard[i][j+1] != 'N'){
-                                parentBoard[i][j+2] = piece;
-                                if(checkForThreeBot(i,j+2,piece,parentBoard)){
-                                    parentBoard[oppPieces[oppPiece].first][oppPieces[oppPiece].second] = ' ';
+                                parentBoard[i][j] = piece;
+                            }else if(j < 3){
+                                //cout << "in7" << endl;
+                                if(parentBoard[i][j+2] == ' ' && parentBoard[i][j+1] == 'B'){
+                                    parentBoard[i][j+2] = piece;
+                                    parentBoard[i][j] = ' ';
+                                    if(checkForThreeBot(i,j+2,piece,parentBoard)){
+                                        parentBoard[oppPieces[remove].first][oppPieces[remove].second] = ' ';
+                                    }
+                                    parent->children.push_back(make_child(parent, nodeData(i,j+2,i,j,piece, numPlaced, parent->data.remaining, parentBoard)));
+                                    if(checkForThreeBot(i,j+2,piece,parentBoard)){
+                                        parentBoard[oppPieces[remove].first][oppPieces[remove].second] = oppPiece;
+                                    }
+                                    parentBoard[i][j+2] = ' ';
+                                    parentBoard[i][j] = piece;
                                 }
-                                parent->children.push_back(make_child(parent, nodeData(i,j+2,piece, numPlaced, parent->data.remaining, parentBoard)));
-                                if(checkForThreeBot(i,j+2,piece,parentBoard)){
-                                    parentBoard[oppPieces[oppPiece].first][oppPieces[oppPiece].second] = oppPiece;
-                                }
-                                parentBoard[i][j+2] = ' ';
                             }
                         }
                         if(j!=0){
+                            //cout << "in8" << endl;
                             if(parentBoard[i][j-1] == ' '){
                                 parentBoard[i][j-1] = piece;
+                                parentBoard[i][j] = ' ';
                                 if(checkForThreeBot(i,j-1,piece,parentBoard)){
                                     parentBoard[oppPieces[oppPiece].first][oppPieces[oppPiece].second] = ' ';
                                 }
-                                parent->children.push_back(make_child(parent, nodeData(i,j-1,piece, numPlaced, parent->data.remaining, parentBoard)));
+                                parent->children.push_back(make_child(parent, nodeData(i,j-1,i,j,piece, numPlaced, parent->data.remaining, parentBoard)));
                                 if(checkForThreeBot(i,j-1,piece,parentBoard)){
                                     parentBoard[oppPieces[oppPiece].first][oppPieces[oppPiece].second] = oppPiece;
                                 }
                                 parentBoard[i][j-1] = ' ';
+                                parentBoard[i][j] = piece;
+                            }else if(j > 1){
+                                //cout << "in9" << endl;
+                                if(parentBoard[i][j-2] == ' ' && parentBoard[i][j-1] == 'B'){
+                                    parentBoard[i][j-2] = piece;
+                                    parentBoard[i][j] = ' ';
+                                    if(checkForThreeBot(i,j-2,piece,parentBoard)){
+                                        parentBoard[oppPieces[oppPiece].first][oppPieces[oppPiece].second] = ' ';
+                                    }
+                                    parent->children.push_back(make_child(parent, nodeData(i,j-2,i,j,piece, numPlaced, parent->data.remaining, parentBoard)));
+                                    if(checkForThreeBot(i,j-2,piece,parentBoard)){
+                                        parentBoard[oppPieces[oppPiece].first][oppPieces[oppPiece].second] = oppPiece;
+                                    }
+                                    parentBoard[i][j-2] = ' ';
+                                    parentBoard[i][j] = piece;
                             }
-                        }else if(j > 1){
-                            if(parentBoard[i][j-2] == ' ' && parentBoard[i][j-1] != 'N'){
-                                parentBoard[i][j+2] = piece;
-                                if(checkForThreeBot(i,j-2,piece,parentBoard)){
-                                    parentBoard[oppPieces[oppPiece].first][oppPieces[oppPiece].second] = ' ';
-                                }
-                                parent->children.push_back(make_child(parent, nodeData(i,j-2,piece, numPlaced, parent->data.remaining, parentBoard)));
-                                if(checkForThreeBot(i,j-2,piece,parentBoard)){
-                                    parentBoard[oppPieces[oppPiece].first][oppPieces[oppPiece].second] = oppPiece;
-                                }
-                                parentBoard[i][j-2] = ' ';
-                            }
+                        }
                         }
                     }
                 }
             }
         }
     }
+    //cout << "at end"<< endl;
 	return;
 }
 void expandNode(std::shared_ptr<boardNode> rootNode){
+    
 	if(rootNode->children.size()==0){
 		generateChildren(rootNode);
 	}
@@ -668,17 +697,18 @@ int simRanPlayout(shared_ptr<boardNode> nodeToExplore, char opponent){
 	int randY = 0;
     int move;
     int numPlaced = nodeToExplore->data.numPlaced;
+    auto secondTempBoard = tempBoard;
     //cout << "sim match" << endl;
 	while(state == 3){
         //while game not over
         //find a piece that can move
+        secondTempBoard = tempBoard;
         playTurn(tempBoard,tempPiece,nodeToExplore->data.placing);
         //printBoard(tempBoard);
         //cout << endl;
-
         if(nodeToExplore->data.placing){
             numPlaced++;
-            if(numPlaced >= 12){
+            if(numPlaced >= 11){
                 nodeToExplore->data.placing = false;
             }
         }
@@ -729,7 +759,7 @@ std::pair<int,int> nextMove(vector<vector<char>> &match, char &monteBotsTeam, in
 	}
 	shared_ptr<boardNode> rootNode = std::make_shared<boardNode>();
 	rootNode->data.curBoard = match;
-	rootNode->data.team = monteBotsTeam;
+	rootNode->data.team = opponent;
     rootNode->data.remaining = rem;
     if(turnCount < 12){
     rootNode->data.numPlaced = turnCount;
@@ -737,16 +767,23 @@ std::pair<int,int> nextMove(vector<vector<char>> &match, char &monteBotsTeam, in
         
     rootNode->data.numPlaced = 12;
     }
+    //cout << "nope" << endl;
 	generateChildren(rootNode);
+    
+   // cout << "nope 2" << endl;
 	auto startTime = std::chrono::system_clock::now();
 	auto endTime = std::chrono::system_clock::now();
 	std::chrono::duration<double> runTime = endTime - startTime;
 	int numberOfNodes = 0;
 	while ( runTime.count() < 5.0){
 		shared_ptr<boardNode> promisingNode = selectPromisingNode(rootNode);
+        
+       // cout << "nope3" << endl;
 		if(promisingNode->children.size()==0){
 			expandNode(promisingNode);
 		}
+        
+        //cout << "nope4" << endl;
 		numberOfNodes += rootNode->children.size();
 		auto nodeToExplore = promisingNode;
 		numberOfNodes += promisingNode->children.size();
@@ -754,7 +791,10 @@ std::pair<int,int> nextMove(vector<vector<char>> &match, char &monteBotsTeam, in
 			nodeToExplore = randomMove(promisingNode);
 			promisingNode.reset();
 		}
+        
+        //cout << "nope5" << endl;
 		auto playoutResults = simRanPlayout(nodeToExplore, opponent);
+        //cout << "nope6" << endl;
 		backpropagation(nodeToExplore, playoutResults, monteBotsTeam);
 		numberOfNodes+= nodeToExplore->children.size();
 		nodeToExplore->children.clear();
@@ -764,11 +804,15 @@ std::pair<int,int> nextMove(vector<vector<char>> &match, char &monteBotsTeam, in
 	}
 	auto bestNode = getBestChild(rootNode);
 	cout << endl << "MCTS created " << numberOfNodes << " Boards" << endl;
-	return {bestNode->data.lastMoveX, bestNode->data.lastMoveY};	
+    match = bestNode->data.curBoard;
+	return {bestNode->data.lastMoveendX, bestNode->data.lastMoveendY};	
 }
 int botTurn( std::shared_ptr<Player> curPlayer, vector<vector<char>> &board, int turnCount){
+    char piece = 'X';
+    if(piece == curPlayer->_piece){
+        piece = 'O';
+    }
     std::pair<int,int> botsMove = nextMove(board, curPlayer->_piece, turnCount,curPlayer->_remaining);
-    board[botsMove.first][botsMove.second] = curPlayer->_piece;
     if(checkForThreeBot(botsMove.first,botsMove.second,curPlayer->_piece,board)){
         return -1;
     }
